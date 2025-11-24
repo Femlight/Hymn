@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:open_leaves/hymn_utils.dart';
-import 'dart:convert';
-import "package:open_leaves/screens/hymn_single_screen.dart";
-import "package:open_leaves/models/models.dart";
+import 'package:open_leaves/models/models.dart';
+import 'package:open_leaves/screens/hymn_single_screen.dart';
 
 class HymsList extends StatefulWidget {
   const HymsList({Key? key}) : super(key: key);
@@ -13,92 +11,168 @@ class HymsList extends StatefulWidget {
 }
 
 class _HymsListState extends State<HymsList> {
-  Future? _future;
-  late Hymns _hymns;
-
-  Future<String> loadJson() async =>
-      await rootBundle.loadString('assets/hymns.json');
+  late Future<List<Hymn>> _hymnsFuture;
+  final HymnRepository _repository = HymnRepository();
 
   @override
   void initState() {
-    _future = loadJson();
+    _hymnsFuture = _repository.loadHymns();
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         elevation: 0.0,
-        title: const Text("Hymns"),
+        centerTitle: false,
+        title: const Text(
+          "Offline hymns",
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
         actions: [
           IconButton(
-              onPressed: () => searchHYMN(context),
-              icon: const Icon(Icons.search))
+            onPressed: () => searchHYMN(context),
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+          )
         ],
       ),
-      backgroundColor: Colors.blue,
-      body: SizedBox(
-          height: MediaQuery.of(context).size.height,
-          child: Container(
-              decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20))),
-              child: Container(
-                margin: EdgeInsets.only(top: 25),
-                child: FutureBuilder(
-                    future: _future,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Padding(
-                          padding: EdgeInsets.all(15.0),
-                          child: Center(
-                            child: CircularProgressIndicator.adaptive(),
-                          ),
-                        );
-                      } else {
-                        var loopData = jsonDecode(snapshot.data! as String);
-                        _hymns = Hymns.fromJson(loopData);
-                        List<Widget> hymnListr = [];
-                        for (var hymn in _hymns.hymns) {
-                          hymnListr.add(InkWell(
-                            onTap: () {
-                              Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (context) =>
-                                      HymnSingle(hymn: hymn)));
-                            },
-                            child: Column(
-                              children: [
-                                ListTile(
-                                  leading: const Icon(Icons.music_note),
-                                  title: Text("Hymn No #" + hymn.hymnNo),
-                                ),
-                                const Divider(
-                                  thickness: 2,
-                                  color: Colors.black,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: FutureBuilder<List<Hymn>>(
+            future: _hymnsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator.adaptive(),
+                );
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    "Couldn't load hymns. Please restart.",
+                    style: TextStyle(color: Colors.red.shade600),
+                  ),
+                );
+              }
+              final hymns = snapshot.data ?? [];
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0F2F1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "${hymns.length} hymns available offline",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F766E),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: hymns.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, idx) {
+                        final hymn = hymns[idx];
+                        final preview =
+                            hymn.content.split('\n').take(2).join(' ').trim();
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () {
+                            Navigator.of(context).push(MaterialPageRoute(
+                                builder: (_) => HymnSingle(hymn: hymn)));
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 6),
                                 )
                               ],
                             ),
-                          ));
-                        }
-
-                        return ListView(
-                          children: hymnListr,
+                            child: Row(
+                              children: [
+                                Container(
+                                  height: 46,
+                                  width: 46,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0F766E).withOpacity(.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      hymn.hymnNo,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16,
+                                        color: Color(0xFF0F766E),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        "Hymn",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.black54,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        "No. ${hymn.hymnNo}",
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        preview,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          height: 1.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right_rounded)
+                              ],
+                            ),
+                          ),
                         );
-                      }
-                    }),
-              ))),
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
     );
-  }
-
-  List<String> generateHymns(int count) {
-    List<String> rList = [];
-    for (var i = 1; i <= count; i++) {
-      var newHymn = "hymn $i".toUpperCase();
-      rList.add((newHymn));
-    }
-    return rList;
   }
 }

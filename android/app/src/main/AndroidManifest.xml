@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.open_leaves">
    <application
-        android:label="Open Leaves"
+        android:label="F.E.A.C. Hymns"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
